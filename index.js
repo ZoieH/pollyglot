@@ -2,7 +2,7 @@ const translationForm = document.getElementById("translationForm");
 const translationOutput = document.getElementById("translationOutput");
 const originalOutput = document.getElementById("originalOutput");
 const resetButton = document.getElementById("resetButton");
-const apiKeyButton = document.getElementById("configureKey");
+const brand = document.querySelector(".brand");
 const loadingTemplate = document.getElementById("loadingTemplate");
 
 const STORAGE_KEY = "pollyglot-openai-key";
@@ -36,6 +36,35 @@ function setApiKey(key) {
   }
 }
 
+function promptForApiKey() {
+  const current = getApiKey();
+  const masked = current ? `${current.slice(0, 4)}${"*".repeat(Math.max(current.length - 4, 0))}` : "";
+  const input = prompt("Enter your OpenAI API key. Leave blank to clear it.", masked);
+
+  if (input === null) {
+    return current || "";
+  }
+
+  const trimmed = input.trim();
+
+  if (!trimmed) {
+    setApiKey("");
+    alert("API key cleared.");
+    return "";
+  }
+
+  if (!/^sk-/.test(trimmed)) {
+    const shouldSave = confirm("The key you entered doesn't look like an OpenAI key (sk-...). Save it anyway?");
+    if (!shouldSave) {
+      return "";
+    }
+  }
+
+  setApiKey(trimmed);
+  alert("API key saved locally for this browser.");
+  return trimmed;
+}
+
 function withLoading(button, isLoading) {
   if (isLoading) {
     if (!button.dataset.originalLabel) {
@@ -54,11 +83,9 @@ function withLoading(button, isLoading) {
   }
 }
 
-async function callOpenAI({ text, language }) {
-  const apiKey = getApiKey();
-
+async function callOpenAI({ text, language, apiKey }) {
   if (!apiKey) {
-    throw new Error("Missing OpenAI API key. Click the API Key button to add one.");
+    throw new Error("Missing OpenAI API key.");
   }
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -68,16 +95,12 @@ async function callOpenAI({ text, language }) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [
-        {
-          role: "system",
-          content:
-            "You are PollyGlot, a helpful assistant that provides elegant, idiomatic translations while keeping meaning and tone intact. Only respond with the translated text.",
-        },
+        { role: "user", content: `Desired language: ${language}` },
         {
           role: "user",
-          content: `Translate the following text into ${language}. Return only the translation. Text: """${text}"""`,
+          content: `Text to translate: """${text}"""\nPlease respond only with the translation in ${language}.`,
         },
       ],
       temperature: 0.2,
@@ -123,7 +146,17 @@ translationForm.addEventListener("submit", async (event) => {
   withLoading(submitButton, true);
 
   try {
-    const translation = await callOpenAI({ text: sourceText, language });
+    let apiKey = getApiKey();
+    if (!apiKey) {
+      apiKey = promptForApiKey();
+    }
+
+    if (!apiKey) {
+      translationOutput.value = "⚠️ An OpenAI API key is required to translate.";
+      return;
+    }
+
+    const translation = await callOpenAI({ text: sourceText, language, apiKey });
     translationOutput.value = translation;
   } catch (error) {
     console.error(error);
@@ -141,32 +174,8 @@ resetButton.addEventListener("click", () => {
   translationOutput.value = "";
 });
 
-apiKeyButton.addEventListener("click", () => {
-  const current = getApiKey();
-  const input = prompt(
-    "Enter your OpenAI API key. Leave blank to clear it.",
-    current ? `${current.slice(0, 4)}${"*".repeat(Math.max(current.length - 4, 0))}` : ""
-  );
-
-  if (input === null) {
-    return; // user cancelled
-  }
-
-  if (!input.trim()) {
-    setApiKey("");
-    alert("API key cleared.");
-    return;
-  }
-
-  if (!/^sk-/.test(input.trim())) {
-    const shouldSave = confirm(
-      "The key you entered doesn't look like an OpenAI key (sk-...). Save it anyway?"
-    );
-    if (!shouldSave) {
-      return;
-    }
-  }
-
-  setApiKey(input.trim());
-  alert("API key saved locally for this browser.");
-});
+if (brand) {
+  brand.addEventListener("dblclick", () => {
+    promptForApiKey();
+  });
+}

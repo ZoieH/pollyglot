@@ -100,21 +100,6 @@ body::after {
   color: var(--color-muted);
 }
 
-.api-key-button {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  padding: 10px 16px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 150ms ease;
-}
-
-.api-key-button:hover,
-.api-key-button:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-}
 
 .panels {
   display: grid;
@@ -307,7 +292,4 @@ body::after {
     padding: 24px;
   }
 
-  .api-key-button {
-    padding-inline: 12px;
-  }
 }
