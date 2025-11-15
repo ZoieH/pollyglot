@@ -1,10 +1,90 @@
 <!doctype html>
-<html>
-    <head>
-        <link rel="stylesheet" href="index.css">
-    </head>
-    <body>
-        <!-- Your HTML here -->
-        <script src="index.js" type="module"></script>
-    </body>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PollyGlot Translator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app__header">
+        <div class="brand">
+          <div class="brand__icon" aria-hidden="true">🐦</div>
+          <div class="brand__text">
+            <h1 class="brand__name">PollyGlot</h1>
+            <p class="brand__tagline">Perfect Translation Every Time</p>
+          </div>
+        </div>
+        <button class="api-key-button" type="button" id="configureKey">API Key</button>
+      </header>
+
+      <main class="panels">
+        <section class="panel">
+          <header class="panel__header">
+            <h2 class="panel__title">Text to translate <span aria-hidden="true">👇</span></h2>
+            <p class="panel__subtitle">How are you?</p>
+          </header>
+          <form class="panel__body" id="translationForm">
+            <label class="field" for="sourceText">
+              <span class="field__label">Original text</span>
+              <textarea id="sourceText" class="field__input" name="source" rows="5" placeholder="How are you?" required></textarea>
+            </label>
+
+            <fieldset class="field field--choices">
+              <legend class="field__label">Select language <span aria-hidden="true">👇</span></legend>
+              <label class="choice">
+                <input type="radio" name="language" value="French" checked />
+                <span class="choice__label">French <span class="choice__flag" role="img" aria-label="France flag">🇫🇷</span></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="language" value="Spanish" />
+                <span class="choice__label">Spanish <span class="choice__flag" role="img" aria-label="Spain flag">🇪🇸</span></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="language" value="Japanese" />
+                <span class="choice__label">Japanese <span class="choice__flag" role="img" aria-label="Japan flag">🇯🇵</span></span>
+              </label>
+            </fieldset>
+
+            <button class="button button--primary" type="submit">
+              <span class="button__icon" aria-hidden="true">🌐</span>
+              Translate
+            </button>
+          </form>
+        </section>
+
+        <section class="panel panel--result" aria-live="polite">
+          <header class="panel__header">
+            <h2 class="panel__title">Original text <span aria-hidden="true">👇</span></h2>
+            <p class="panel__subtitle" id="originalOutput">&nbsp;</p>
+          </header>
+          <div class="panel__body">
+            <label class="field" for="translationOutput">
+              <span class="field__label">Your translation</span>
+              <div class="result">
+                <img class="result__image" src="https://images.unsplash.com/photo-1521133573892-e44906baee46?auto=format&fit=crop&w=400&q=80" alt="Illustration of communication" />
+                <textarea id="translationOutput" class="field__input field__input--result" rows="5" readonly placeholder="Comment allez-vous?"></textarea>
+              </div>
+            </label>
+            <button class="button button--secondary" type="button" id="resetButton">Start Over</button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app__footer">
+        <p>Tip: Click <strong>API Key</strong> to store your OpenAI key locally. Translations run directly in your browser.</p>
+      </footer>
+    </div>
+
+    <template id="loadingTemplate">
+      <span class="loader" aria-hidden="true"></span>
+      <span>Translating…</span>
+    </template>
+
+    <script src="index.js" type="module"></script>
+  </body>
 </html>

@@ -1,0 +1,172 @@
+const translationForm = document.getElementById("translationForm");
+const translationOutput = document.getElementById("translationOutput");
+const originalOutput = document.getElementById("originalOutput");
+const resetButton = document.getElementById("resetButton");
+const apiKeyButton = document.getElementById("configureKey");
+const loadingTemplate = document.getElementById("loadingTemplate");
+
+const STORAGE_KEY = "pollyglot-openai-key";
+const DEFAULT_PROMPT = "How are you?";
+
+document.addEventListener("DOMContentLoaded", () => {
+  const savedText = localStorage.getItem("pollyglot-last-text");
+  if (savedText) {
+    document.getElementById("sourceText").value = savedText;
+    originalOutput.textContent = savedText;
+  } else {
+    originalOutput.textContent = DEFAULT_PROMPT;
+  }
+
+  const savedLanguage = localStorage.getItem("pollyglot-last-language");
+  if (savedLanguage) {
+    const radio = translationForm.querySelector(`input[value="${savedLanguage}"]`);
+    if (radio) radio.checked = true;
+  }
+});
+
+function getApiKey() {
+  return localStorage.getItem(STORAGE_KEY) || "";
+}
+
+function setApiKey(key) {
+  if (key) {
+    localStorage.setItem(STORAGE_KEY, key.trim());
+  } else {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}
+
+function withLoading(button, isLoading) {
+  if (isLoading) {
+    if (!button.dataset.originalLabel) {
+      button.dataset.originalLabel = button.innerHTML;
+    }
+    const fragment = loadingTemplate.content.cloneNode(true);
+    const nodes = Array.from(fragment.childNodes);
+    button.replaceChildren(...nodes);
+    button.disabled = true;
+  } else {
+    if (button.dataset.originalLabel) {
+      button.innerHTML = button.dataset.originalLabel;
+      delete button.dataset.originalLabel;
+    }
+    button.disabled = false;
+  }
+}
+
+async function callOpenAI({ text, language }) {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    throw new Error("Missing OpenAI API key. Click the API Key button to add one.");
+  }
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are PollyGlot, a helpful assistant that provides elegant, idiomatic translations while keeping meaning and tone intact. Only respond with the translated text.",
+        },
+        {
+          role: "user",
+          content: `Translate the following text into ${language}. Return only the translation. Text: """${text}"""`,
+        },
+      ],
+      temperature: 0.2,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    const message = errorPayload?.error?.message || response.statusText;
+    throw new Error(message || "Unable to translate. Try again later.");
+  }
+
+  const data = await response.json();
+  const result = data?.choices?.[0]?.message?.content;
+
+  if (!result) {
+    throw new Error("OpenAI response was empty. Please try again.");
+  }
+
+  return result.trim();
+}
+
+translationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const formData = new FormData(translationForm);
+  const sourceText = formData.get("source")?.toString().trim();
+  const language = formData.get("language")?.toString() ?? "French";
+
+  if (!sourceText) {
+    translationOutput.value = "";
+    originalOutput.textContent = DEFAULT_PROMPT;
+    return;
+  }
+
+  localStorage.setItem("pollyglot-last-text", sourceText);
+  localStorage.setItem("pollyglot-last-language", language);
+
+  originalOutput.textContent = sourceText;
+  translationOutput.value = "";
+
+  const submitButton = translationForm.querySelector("button[type='submit']");
+  withLoading(submitButton, true);
+
+  try {
+    const translation = await callOpenAI({ text: sourceText, language });
+    translationOutput.value = translation;
+  } catch (error) {
+    console.error(error);
+    translationOutput.value = `⚠️ ${error.message}`;
+  } finally {
+    withLoading(submitButton, false);
+  }
+});
+
+resetButton.addEventListener("click", () => {
+  translationForm.reset();
+  localStorage.removeItem("pollyglot-last-text");
+  localStorage.removeItem("pollyglot-last-language");
+  originalOutput.textContent = DEFAULT_PROMPT;
+  translationOutput.value = "";
+});
+
+apiKeyButton.addEventListener("click", () => {
+  const current = getApiKey();
+  const input = prompt(
+    "Enter your OpenAI API key. Leave blank to clear it.",
+    current ? `${current.slice(0, 4)}${"*".repeat(Math.max(current.length - 4, 0))}` : ""
+  );
+
+  if (input === null) {
+    return; // user cancelled
+  }
+
+  if (!input.trim()) {
+    setApiKey("");
+    alert("API key cleared.");
+    return;
+  }
+
+  if (!/^sk-/.test(input.trim())) {
+    const shouldSave = confirm(
+      "The key you entered doesn't look like an OpenAI key (sk-...). Save it anyway?"
+    );
+    if (!shouldSave) {
+      return;
+    }
+  }
+
+  setApiKey(input.trim());
+  alert("API key saved locally for this browser.");
+});
